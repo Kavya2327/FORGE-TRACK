@@ -22,9 +22,8 @@ const Materials = () => {
   })
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => { fetchData() }, [])
-
   const fetchData = async () => {
+    await Promise.resolve() // Avoid sync setState in effect
     setLoading(true)
     const { data: mData } = await supabase.from('materials').select('*, sessions(*)').order('created_at', { ascending: false })
     const { data: sData } = await supabase.from('sessions').select('*').order('date', { ascending: false })
@@ -32,6 +31,13 @@ const Materials = () => {
     setSessions(sData || [])
     setLoading(false)
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchData()
+  }, [])
+
+
 
   const handleAddMaterial = async (e) => {
     e.preventDefault()

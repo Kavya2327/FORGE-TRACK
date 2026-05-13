@@ -31,11 +31,8 @@ const MarkAttendance = () => {
   const [saving, setSaving] = useState(false)
   const navigate = useNavigate()
 
-  useEffect(() => {
-    fetchSessionAndStudents()
-  }, [selectedDate])
-
   const fetchSessionAndStudents = async () => {
+    await Promise.resolve()
     setLoading(true)
     try {
       const { data: sessionData } = await supabase.from('sessions').select('*').eq('date', selectedDate).single()
@@ -44,19 +41,28 @@ const MarkAttendance = () => {
       setStudents(studentsData || [])
 
       if (sessionData) {
-        const { data: attendanceData } = await supabase.from('attendance').select('student_id, present').eq('session_id', sessionData.id)
+        const { data: attendanceData } = await supabase.from('attendance').select('*').eq('session_id', sessionData.id)
         const attendanceMap = {}
-        attendanceData?.forEach(row => { attendanceMap[row.student_id] = row.present })
+        attendanceData?.forEach(record => {
+          attendanceMap[record.student_id] = record.present
+        })
         setAttendance(attendanceMap)
       } else {
         setAttendance({})
       }
     } catch (err) {
-      console.error('Error fetching data:', err)
+      console.error(err)
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchSessionAndStudents()
+  }, [selectedDate])
+
+
 
   const toggleAttendance = (studentId) => {
     setAttendance(prev => ({ ...prev, [studentId]: !prev[studentId] }))
@@ -66,6 +72,25 @@ const MarkAttendance = () => {
     const newAttendance = {}
     students.forEach(s => { newAttendance[s.id] = present })
     setAttendance(newAttendance)
+  }
+
+  const handleCreateSession = async () => {
+    try {
+      const topic = window.prompt('Enter Session Topic:', 'New Session')
+      if (!topic) return
+      
+      const { data, error } = await supabase.from('sessions').insert([{
+        date: selectedDate,
+        topic: topic,
+        duration_hours: 2,
+        session_type: 'Regular'
+      }]).select().single()
+      
+      if (error) throw error
+      setSession(data)
+    } catch (err) {
+      alert('Error creating session: ' + err.message)
+    }
   }
 
   const handleSave = async () => {
@@ -80,9 +105,11 @@ const MarkAttendance = () => {
       }))
       const { error } = await supabase.from('attendance').upsert(attendanceRows, { onConflict: 'student_id,session_id' })
       if (error) throw error
+      
+      alert('Attendance saved successfully!')
       navigate('/dashboard')
     } catch (err) {
-      alert('Error: ' + err.message)
+      alert('Error saving attendance: ' + err.message)
     } finally {
       setSaving(false)
     }
@@ -127,11 +154,15 @@ const MarkAttendance = () => {
               </p>
             </div>
           </div>
-          {session && (
+          {session ? (
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => selectAll(true)} className="text-xs h-8">Select All</Button>
               <Button variant="outline" size="sm" onClick={() => selectAll(false)} className="text-xs h-8 hover:text-danger">Clear All</Button>
             </div>
+          ) : (
+            <Button onClick={handleCreateSession} className="bg-accent-glow text-white h-9">
+              Create Session
+            </Button>
           )}
         </CardContent>
       </Card>

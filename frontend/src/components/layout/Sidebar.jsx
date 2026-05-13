@@ -25,7 +25,8 @@ const Sidebar = () => {
       { to: '/materials', label: 'Materials', icon: BookOpen },
     ]},
     { label: 'Data', items: [
-      { to: '/upload', label: 'Upload CSV', icon: Upload }
+      { to: '/upload', label: 'Upload Students CSV', icon: Upload },
+      { to: '/bulk-attendance', label: 'Bulk Attendance', icon: CheckSquare }
     ]}
   ]
 
@@ -59,6 +60,12 @@ const Sidebar = () => {
     </NavLink>
   )
 
+  const handleLogout = () => {
+    if (window.confirm('Are you sure you want to log out of ForgeTrack?')) {
+      signOut()
+    }
+  }
+
   return (
     <aside className="w-[260px] h-screen border-r border-border-subtle flex flex-col sticky top-0 bg-canvas">
       <div className="p-6">
@@ -71,9 +78,9 @@ const Sidebar = () => {
           <span className="text-h3 tracking-tight">ForgeTrack</span>
         </div>
 
-        <div className="p-4 bg-surface-raised rounded-xl mb-8 border border-border-subtle">
+        <div className="p-4 bg-surface-raised rounded-xl mb-8 border border-border-subtle group hover:border-accent-glow/20 transition-all">
           <p className="text-micro text-fg-tertiary mb-1">Welcome Back</p>
-          <p className="text-body font-semibold truncate">{profile?.display_name || 'User'}</p>
+          <p className="text-body font-semibold truncate">{profile?.display_name || 'Kavya'}</p>
           <p className="text-[10px] text-accent-glow uppercase tracking-wider font-bold mt-1">
             {role === 'mentor' ? 'Lead Mentor' : 'Student'}
           </p>
@@ -95,7 +102,7 @@ const Sidebar = () => {
 
       <div className="mt-auto p-6 border-t border-border-subtle">
         <button 
-          onClick={signOut}
+          onClick={handleLogout}
           className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-fg-secondary hover:text-danger hover:bg-danger-bg/20 transition-all w-full group"
         >
           <LogOut className="w-5 h-5 stroke-[1.75px] group-hover:text-danger" />

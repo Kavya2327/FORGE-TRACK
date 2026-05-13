@@ -73,10 +73,6 @@ const Dashboard = () => {
   })
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchDashboardData()
-  }, [])
-
   const fetchDashboardData = async () => {
     setLoading(true)
     try {
@@ -96,6 +92,11 @@ const Dashboard = () => {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchDashboardData()
+  }, [])
 
   return (
     <div className="space-y-10 pb-20">

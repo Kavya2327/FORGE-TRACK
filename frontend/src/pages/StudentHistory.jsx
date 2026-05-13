@@ -7,7 +7,8 @@ import {
   Calendar, 
   CheckCircle2, 
   XCircle,
-  BarChart3
+  BarChart3,
+  Users
 } from 'lucide-react'
 
 const StudentHistory = () => {
@@ -19,19 +20,19 @@ const StudentHistory = () => {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    const fetchStudents = async () => {
+      const { data } = await supabase.from('students').select('*').order('name')
+      setStudents(data || [])
+    }
+    const fetchSessions = async () => {
+      const { data } = await supabase.from('sessions').select('*').order('date', { ascending: false })
+      setSessions(data || [])
+    }
     fetchStudents()
     fetchSessions()
   }, [])
 
-  const fetchStudents = async () => {
-    const { data } = await supabase.from('students').select('*').order('name')
-    setStudents(data || [])
-  }
 
-  const fetchSessions = async () => {
-    const { data } = await supabase.from('sessions').select('*').order('date', { ascending: false })
-    setSessions(data || [])
-  }
 
   const fetchStudentHistory = async (student) => {
     setLoading(true)

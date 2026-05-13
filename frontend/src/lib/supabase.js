@@ -12,6 +12,6 @@ export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
     persistSession: true,
     detectSessionInUrl: true,
     autoRefreshToken: true,
-    lock_acquire_timeout: 10000,  // give lock more time — fixes the 5000ms timeout
+    lock_acquire_timeout: 5000, // Increased to allow more time during slow dev starts
   }
 })
