@@ -1,7 +1,6 @@
 import { getGeminiModel } from './gemini'
 
 export const analyzeSpreadsheetData = async (headers, sampleData, existingSessions, userContext = "") => {
-  // Use gemini-2.5-flash instead of gemini-1.5/2.0 to bypass rate limits and 404s
   const model = getGeminiModel('gemini-2.5-flash')
   if (!model) throw new Error("Gemini model not initialized. Please check your API key.")
 

@@ -91,10 +91,16 @@ const BulkAttendance = () => {
       const firstRowIndex = sheetData.findIndex(row => row.length > 0)
       if (firstRowIndex === -1) throw new Error("Spreadsheet is empty")
       
-      // Pass the top 10 rows (including potential merged headers)
-      const topRows = sheetData.slice(Math.max(0, firstRowIndex - 1), firstRowIndex + 10)
+      // Reduce payload size to prevent AI 429 Quota Exceeded errors
+      // Limit to 50 columns and only a few rows
+      const limitCols = (row) => row ? row.slice(0, 50) : []
+      const topRows = sheetData.slice(Math.max(0, firstRowIndex - 1), firstRowIndex + 5).map(limitCols)
+      const sampleRows = sheetData.slice(firstRowIndex + 2, firstRowIndex + 4).map(limitCols)
       
-      const mapping = await analyzeSpreadsheetData(topRows, sheetData.slice(firstRowIndex + 2, firstRowIndex + 5), existingSessions, userContext)
+      const mapping = await analyzeSpreadsheetData(topRows, sampleRows, existingSessions, userContext)
+      if (mapping && mapping.attendanceColumns) {
+        mapping.attendanceColumns = mapping.attendanceColumns.filter(c => c.header && String(c.header).trim() !== '')
+      }
       setAiMapping(mapping)
       setStep(4)
     } catch (err) {
@@ -107,6 +113,12 @@ const BulkAttendance = () => {
   const handleDateUpdate = (index, value) => {
     const newMapping = { ...aiMapping }
     newMapping.attendanceColumns[index].inferredDate = value
+    setAiMapping(newMapping)
+  }
+
+  const handleRemoveColumn = (indexToRemove) => {
+    const newMapping = { ...aiMapping }
+    newMapping.attendanceColumns = newMapping.attendanceColumns.filter((_, idx) => idx !== indexToRemove)
     setAiMapping(newMapping)
   }
 
@@ -165,17 +177,41 @@ const BulkAttendance = () => {
       const sessionsMap = {} // { "YYYY-MM-DD": session_id }
       for (const col of aiMapping.attendanceColumns) {
         if (!col.colIndex) continue
-        const date = col.inferredDate
-        let session = existingSessions.find(s => s.date === date && s.topic === col.topic)
+        
+        const rawDate = col.inferredDate
+        if (!rawDate) continue
+        
+        // Ensure valid date format (convert DD-MM-YYYY to YYYY-MM-DD if needed)
+        let validDateStr = rawDate
+        if (rawDate.match(/^\d{2}-\d{2}-\d{4}$/)) {
+          const [d, m, y] = rawDate.split('-')
+          validDateStr = `${y}-${m}-${d}`
+        }
+        
+        // Find existing by normalized date
+        let session = existingSessions.find(s => s.date === validDateStr)
+        
         if (!session) {
-          const { data, error } = await supabase.from('sessions').insert([{
-            date: date,
-            topic: col.topic || 'Imported Session',
-            duration_hours: 2,
-            session_type: 'Regular'
-          }]).select().single()
-          if (error) throw error
-          session = data
+          // Double check database directly to prevent duplicate unique constraint errors (which can mask as RLS errors)
+          const { data: dbSession } = await supabase.from('sessions').select('*').eq('date', validDateStr).maybeSingle()
+          
+          if (dbSession) {
+            session = dbSession
+            existingSessions.push(dbSession)
+          } else {
+            const monthNum = parseInt(validDateStr.split('-')[1], 10)
+            const { data, error } = await supabase.from('sessions').insert([{
+              date: validDateStr,
+              topic: col.topic || 'Imported Session',
+              month_number: monthNum || 1,
+              duration_hours: 2,
+              session_type: 'Regular'
+            }]).select().single()
+            
+            if (error) throw error
+            session = data
+            existingSessions.push(data)
+          }
         }
         sessionsMap[col.colIndex] = session.id
       }
@@ -418,6 +454,15 @@ const BulkAttendance = () => {
                                 onChange={(e) => handleDateUpdate(idx, e.target.value)}
                                 className={`h-8 w-40 text-sm ${!col.inferredDate ? 'border-warning focus-visible:ring-warning' : 'border-border-strong'}`}
                               />
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => handleRemoveColumn(idx)}
+                                className="text-fg-tertiary hover:text-danger hover:bg-danger-bg/20 h-8 w-8 ml-2"
+                                title="Remove column from import"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
